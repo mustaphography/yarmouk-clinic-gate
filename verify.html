@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verifying…</title>
+</head>
+<body>
+<script>
+  // Change CORRECT_PIN to whatever 4-digit access code the clinic wants staff to use.
+  var CORRECT_PIN = "2026";
+  var GPT_URL = "https://chatgpt.com/g/g-6a5f365ddf208191a80168ca39636c9c-yarmouk-clinic-emergency-assistant";
+
+  var params = new URLSearchParams(location.search);
+  var entered = params.get('pin');
+
+  if (entered === CORRECT_PIN) {
+    location.replace(GPT_URL);
+  } else {
+    location.replace('index.html?error=1');
+  }
+</script>
+</body>
+</html>
