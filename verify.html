@@ -9,7 +9,18 @@
 <script>
   // Change CORRECT_PIN to whatever 4-digit access code the clinic wants staff to use.
   var CORRECT_PIN = "2026";
-  var GPT_URL = "https://chatgpt.com/g/g-6a5f365ddf208191a80168ca39636c9c-yarmouk-clinic-emergency-assistant";
+
+  // Points at the verified build. Bare-ID form on purpose: ChatGPT appends the
+  // name slug itself, so a future rename cannot break this link.
+  //
+  // 2026-07-27: repointed. It previously sent staff to
+  // g-6a5f365ddf208191a80168ca39636c9c, which is owned by another account and
+  // cannot be edited from here — so none of the fixes ever reached staff. Asked
+  // for a First-floor Preventive Health Offices fire, that GPT still named the
+  // long-way-round South-center EXIT, sent no map, and asked for the user's
+  // name. To hand the clinic back to that GPT once its owner applies
+  // SETUP-UPDATE.md, put its id back below.
+  var GPT_URL = "https://chatgpt.com/g/g-6a638134dbb081918e22ca6b0e208188";
 
   var params = new URLSearchParams(location.search);
   var entered = params.get('pin');
