@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /
+
+# The floor plans under /m/ are the same evacuation maps posted on the building's
+# walls, but there is no reason for them to be searchable. Crawling is refused
+# site-wide. This does not affect the assistant: the map is loaded by the staff
+# member's own browser when the reply renders, which robots.txt does not govern.
