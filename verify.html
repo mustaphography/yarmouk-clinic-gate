@@ -13,29 +13,111 @@
 </head>
 <body>
 <script>
-  // Change CORRECT_PIN to whatever 4-digit access code the clinic wants staff to use.
-  var CORRECT_PIN = "2026";
+  // Emergency fallback: config.json is deliberately optional at runtime.
+  // If it is missing, malformed, unavailable, or unsafe, staff still reach the last
+  // known-good assistant with the last known-good PIN.
+  var FALLBACK_CONFIG = Object.freeze({
+    pin: "2026",
+    gpt_url: "https://chatgpt.com/g/g-6a5f365ddf208191a80168ca39636c9c-yarmouk-clinic-emergency-assistant"
+  });
+  var REMEMBER_KEY = "yarmouk_staff_access_v1";
+  var REMEMBER_MS = 30 * 24 * 60 * 60 * 1000;
 
-  // Points at the verified build. Bare-ID form on purpose: ChatGPT appends the
-  // name slug itself, so a future rename cannot break this link.
-  //
-  // 2026-07-27: repointed. It previously sent staff to
-  // g-6a5f365ddf208191a80168ca39636c9c, which is owned by another account and
-  // cannot be edited from here — so none of the fixes ever reached staff. Asked
-  // for a First-floor Preventive Health Offices fire, that GPT still named the
-  // long-way-round South-center EXIT, sent no map, and asked for the user's
-  // name. To hand the clinic back to that GPT once its owner applies
-  // SETUP-UPDATE.md, put its id back below.
-  var GPT_URL = "https://chatgpt.com/g/g-6a638134dbb081918e22ca6b0e208188";
-
-  var params = new URLSearchParams(location.search);
-  var entered = params.get('pin');
-
-  if (entered === CORRECT_PIN) {
-    location.replace(GPT_URL);
-  } else {
-    location.replace('index.html?error=1');
+  function validConfig(value) {
+    if (!value || typeof value !== "object") return false;
+    if (!/^\d{4}$/.test(value.pin || "")) return false;
+    try {
+      var url = new URL(value.gpt_url);
+      return url.protocol === "https:" &&
+        url.hostname === "chatgpt.com" &&
+        /^\/g\/g-[A-Za-z0-9_-]+(?:-[^/?#]*)?\/?$/.test(url.pathname) &&
+        !url.search && !url.hash;
+    } catch (_error) {
+      return false;
+    }
   }
+
+  async function loadConfig(cacheKey) {
+    var controller = new AbortController();
+    var timeout = setTimeout(function () { controller.abort(); }, 3500);
+    try {
+      var response = await fetch(
+        "config.json?t=" + encodeURIComponent(cacheKey || Date.now()),
+        { cache: "no-store", signal: controller.signal }
+      );
+      if (!response.ok) throw new Error("config unavailable");
+      var candidate = await response.json();
+      return validConfig(candidate) ? candidate : FALLBACK_CONFIG;
+    } catch (_error) {
+      return FALLBACK_CONFIG;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  // This fingerprint invalidates remembered access when either the PIN or GPT
+  // destination changes. It is not a security hash; both values are public on
+  // this soft gate, and the PIN itself is never stored in localStorage.
+  function configKey(config) {
+    var input = config.pin + "\n" + config.gpt_url;
+    var hash = 2166136261;
+    for (var i = 0; i < input.length; i++) {
+      hash ^= input.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(16);
+  }
+
+  function forgetRememberedAccess() {
+    try { localStorage.removeItem(REMEMBER_KEY); } catch (_error) {}
+  }
+
+  function rememberAccess(config) {
+    try {
+      localStorage.setItem(REMEMBER_KEY, JSON.stringify({
+        key: configKey(config),
+        expires: Date.now() + REMEMBER_MS
+      }));
+    } catch (_error) {
+      // Private-browsing/storage restrictions simply mean the PIN is requested
+      // again next time; they must never block this successful entry.
+    }
+  }
+
+  function rememberedAccessMatches(config) {
+    try {
+      var saved = JSON.parse(localStorage.getItem(REMEMBER_KEY) || "null");
+      return saved && saved.key === configKey(config) &&
+        Number.isFinite(saved.expires) && saved.expires > Date.now();
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  (async function () {
+    var params = new URLSearchParams(location.search);
+    var config = await loadConfig(params.get("t"));
+
+    // After PIN (or remembered device), land on choose.html so QR users still get
+    // question suggestions. ChatGPT mobile hides GPT conversation-starter chips
+    // when opened via deep link — the gate owns that UI instead.
+    if (params.get("remembered") === "1") {
+      if (rememberedAccessMatches(config)) {
+        location.replace("choose.html?t=" + Date.now());
+      } else {
+        forgetRememberedAccess();
+        location.replace("index.html?reauth=1");
+      }
+      return;
+    }
+
+    if (params.get("pin") === config.pin) {
+      if (params.get("remember") === "1") rememberAccess(config);
+      location.replace("choose.html?t=" + Date.now());
+    } else {
+      location.replace("index.html?error=1");
+    }
+  }());
 </script>
 </body>
 </html>

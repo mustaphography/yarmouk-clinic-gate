@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yarmouk Gate Publisher</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #17212b;
+    --muted: #5f6b76;
+    --line: #d8dee4;
+    --panel: #ffffff;
+    --page: #f3f5f7;
+    --red: #a92828;
+    --red-dark: #841f1f;
+    --green: #176b3a;
+    --amber-bg: #fff8dd;
+    --amber-line: #d8aa18;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    line-height: 1.5;
+  }
+  main {
+    width: min(760px, calc(100% - 28px));
+    margin: 30px auto 64px;
+  }
+  .hero, .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(23, 33, 43, 0.06);
+  }
+  .hero {
+    padding: 26px;
+    border-top: 6px solid var(--red);
+  }
+  .eyebrow {
+    color: var(--red);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  h1 {
+    margin: 4px 0 5px;
+    font-size: clamp(25px, 5vw, 36px);
+    line-height: 1.15;
+  }
+  .ar {
+    direction: rtl;
+    font-family: Tahoma, Arial, sans-serif;
+  }
+  .hero .ar {
+    margin: 0;
+    color: var(--muted);
+    font-size: 18px;
+  }
+  .warning {
+    margin-top: 18px;
+    padding: 13px 15px;
+    border: 1px solid var(--amber-line);
+    border-radius: 10px;
+    background: var(--amber-bg);
+    font-size: 14px;
+  }
+  .panel {
+    margin-top: 18px;
+    padding: 24px;
+  }
+  h2 {
+    margin: 0 0 18px;
+    font-size: 20px;
+  }
+  label {
+    display: block;
+    margin: 16px 0 7px;
+    font-weight: 750;
+  }
+  input {
+    width: 100%;
+    padding: 12px 13px;
+    border: 2px solid var(--line);
+    border-radius: 9px;
+    background: #fff;
+    color: var(--ink);
+    font: inherit;
+  }
+  input:focus {
+    outline: none;
+    border-color: var(--red);
+    box-shadow: 0 0 0 3px rgba(169, 40, 40, 0.12);
+  }
+  #pin { max-width: 180px; font-size: 22px; letter-spacing: 0.16em; }
+  .hint, #loadStatus {
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .error {
+    min-height: 24px;
+    margin-top: 12px;
+    color: var(--red);
+    font-weight: 700;
+  }
+  pre {
+    margin: 10px 0 0;
+    padding: 14px;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    border: 1px solid #b7c2cc;
+    border-radius: 9px;
+    background: #f7f9fa;
+    color: #14202b;
+    font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  button, .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 10px 16px;
+    border: 0;
+    border-radius: 9px;
+    background: var(--red);
+    color: #fff;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 800;
+    text-decoration: none;
+  }
+  button:hover, .button:hover { background: var(--red-dark); }
+  .button.secondary {
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+  }
+  .button.secondary:hover { background: #eef1f3; }
+  ol { padding-left: 22px; }
+  li { margin: 10px 0; }
+  code {
+    padding: 2px 5px;
+    border-radius: 5px;
+    background: #eef1f3;
+  }
+  .ok { color: var(--green); font-weight: 750; }
+  @media (max-width: 520px) {
+    main { margin-top: 14px; }
+    .hero, .panel { padding: 19px; border-radius: 13px; }
+    .actions > * { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div class="eyebrow">Publisher control</div>
+    <h1>Yarmouk Gate Settings</h1>
+    <p class="ar" lang="ar">إعدادات بوابة مساعد طوارئ مركز اليرموك</p>
+    <div class="warning">
+      <strong>This PIN is a soft gate, not secret security.</strong>
+      Anyone can read <code>config.json</code> on this public website.
+      <div class="ar" lang="ar">
+        رمز الدخول بوابة بسيطة وليس حماية سرية؛ يمكن لأي شخص قراءة ملف الإعدادات العام.
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>1. Enter the new settings</h2>
+    <div id="loadStatus">Loading the currently published settings…</div>
+
+    <label for="pin">Four-digit staff PIN</label>
+    <input id="pin" inputmode="numeric" autocomplete="off" maxlength="4"
+           pattern="[0-9]{4}" aria-describedby="pinHint">
+    <div class="hint" id="pinHint">Exactly four Latin digits, for example 2026.</div>
+
+    <label for="gptUrl">Published ChatGPT GPT link</label>
+    <input id="gptUrl" type="url" autocomplete="off" spellcheck="false"
+           placeholder="https://chatgpt.com/g/g-…">
+    <div class="hint">Open the GPT, copy its public link, and paste it here.</div>
+    <div class="error" id="validationError" role="alert"></div>
+  </section>
+
+  <section class="panel">
+    <h2>2. Copy this exact one-line file</h2>
+    <pre id="configLine" aria-live="polite"></pre>
+    <div class="actions">
+      <button type="button" id="copyButton">Copy exact line</button>
+      <a class="button secondary" id="editLink"
+         href="https://github.com/mustaphography/yarmouk-clinic-gate/edit/main/config.json"
+         target="_blank" rel="noopener">Open config.json on GitHub</a>
+    </div>
+    <div id="copyStatus" class="hint" aria-live="polite"></div>
+  </section>
+
+  <section class="panel">
+    <h2>3. Publish and test</h2>
+    <ol>
+      <li>Open <code>config.json</code> with the button above.</li>
+      <li>Select the entire existing line and paste the copied line.</li>
+      <li>Press <strong>Commit changes…</strong>, then confirm the commit.</li>
+      <li>Wait about two minutes for GitHub Pages.</li>
+      <li>Use the test button below. Enter the new PIN and confirm the intended GPT opens.</li>
+    </ol>
+    <div class="actions">
+      <a class="button" href="./?admin-test=1" target="_blank" rel="noopener">
+        Test the staff gate
+      </a>
+      <a class="button secondary" href="./?forget=1" target="_blank" rel="noopener">
+        Forget saved access on this device
+      </a>
+    </div>
+    <p class="hint">
+      If the pasted file is malformed or unavailable, the gate automatically uses
+      the last known-good PIN and GPT instead of failing during an emergency.
+      A successful entry can be remembered in this browser for up to 30 days;
+      changing the PIN or GPT link invalidates that saved access.
+    </p>
+  </section>
+</main>
+
+<script>
+  var FALLBACK_CONFIG = {
+    pin: "2026",
+    gpt_url: "https://chatgpt.com/g/g-6a5f365ddf208191a80168ca39636c9c-yarmouk-clinic-emergency-assistant"
+  };
+
+  var pinInput = document.getElementById("pin");
+  var urlInput = document.getElementById("gptUrl");
+  var configLine = document.getElementById("configLine");
+  var validationError = document.getElementById("validationError");
+  var loadStatus = document.getElementById("loadStatus");
+  var copyStatus = document.getElementById("copyStatus");
+
+  function normalizedConfig() {
+    var pin = pinInput.value.trim();
+    var rawUrl = urlInput.value.trim();
+    if (!/^\d{4}$/.test(pin)) {
+      throw new Error("The PIN must contain exactly four Latin digits.");
+    }
+    var url;
+    try {
+      url = new URL(rawUrl);
+    } catch (_error) {
+      throw new Error("Paste a complete ChatGPT GPT link.");
+    }
+    if (url.protocol !== "https:" || url.hostname !== "chatgpt.com" ||
+        !/^\/g\/g-[A-Za-z0-9_-]+(?:-[^/?#]*)?\/?$/.test(url.pathname) ||
+        url.search || url.hash) {
+      throw new Error("Use a public link beginning https://chatgpt.com/g/g-");
+    }
+    return { pin: pin, gpt_url: url.origin + url.pathname.replace(/\/$/, "") };
+  }
+
+  function refreshOutput() {
+    copyStatus.textContent = "";
+    try {
+      var config = normalizedConfig();
+      configLine.textContent = JSON.stringify(config);
+      validationError.textContent = "";
+      return config;
+    } catch (error) {
+      configLine.textContent = "Fix the fields above to create the file.";
+      validationError.textContent = error.message;
+      return null;
+    }
+  }
+
+  async function loadCurrent() {
+    var config = FALLBACK_CONFIG;
+    try {
+      var response = await fetch("config.json?t=" + Date.now(), { cache: "no-store" });
+      if (!response.ok) throw new Error("unavailable");
+      var candidate = await response.json();
+      if (candidate && /^\d{4}$/.test(candidate.pin || "") &&
+          typeof candidate.gpt_url === "string") {
+        config = candidate;
+        loadStatus.innerHTML = '<span class="ok">Current published settings loaded.</span>';
+      } else {
+        throw new Error("invalid");
+      }
+    } catch (_error) {
+      loadStatus.textContent =
+        "The published file could not be read. Showing the last known-good fallback.";
+    }
+    pinInput.value = config.pin;
+    urlInput.value = config.gpt_url;
+    refreshOutput();
+  }
+
+  pinInput.addEventListener("input", function () {
+    pinInput.value = pinInput.value.replace(/\D/g, "").slice(0, 4);
+    refreshOutput();
+  });
+  urlInput.addEventListener("input", refreshOutput);
+
+  document.getElementById("copyButton").addEventListener("click", async function () {
+    var config = refreshOutput();
+    if (!config) return;
+    var line = JSON.stringify(config);
+    try {
+      await navigator.clipboard.writeText(line);
+      copyStatus.innerHTML = '<span class="ok">Copied. Paste it into config.json on GitHub.</span>';
+    } catch (_error) {
+      var selection = window.getSelection();
+      var range = document.createRange();
+      range.selectNodeContents(configLine);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      copyStatus.textContent = "Clipboard access was blocked. The exact line is selected; copy it now.";
+    }
+  });
+
+  loadCurrent();
+</script>
+</body>
+</html>

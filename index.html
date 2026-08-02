@@ -57,6 +57,28 @@
     font-family: inherit;
   }
   input[type="password"]:focus { outline: none; border-color: #c0392b; }
+  .remember {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin: 0 0 16px;
+    color: #555;
+    font-size: 12.5px;
+    line-height: 1.35;
+    text-align: left;
+  }
+  .remember input {
+    flex: 0 0 auto;
+    width: 19px;
+    height: 19px;
+    margin: 1px 0 0;
+    accent-color: #c0392b;
+  }
+  .remember .ar {
+    display: block;
+    direction: rtl;
+    text-align: right;
+  }
   button {
     width: 100%;
     padding: 15px;
@@ -101,12 +123,44 @@
       <input type="text" name="u" value="yarmouk-clinic-staff" autocomplete="username" hidden>
       <input type="password" id="pin" name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4"
              autocomplete="current-password" placeholder="••••" required autofocus>
+      <label class="remember">
+        <input type="checkbox" id="remember" name="remember" value="1" checked>
+        <span>
+          Remember this device for 30 days
+          <span class="ar" lang="ar">تذكّر هذا الجهاز لمدة 30 يومًا</span>
+        </span>
+      </label>
       <button type="submit">Enter | دخول</button>
     </form>
     <div class="footer">Emergency Response Assistant<br>Staff use only | لاستخدام الموظفين فقط</div>
   </div>
   <script>
-    if (location.search.indexOf('error=1') !== -1) {
+    var REMEMBER_KEY = "yarmouk_staff_access_v1";
+    var params = new URLSearchParams(location.search);
+
+    function forgetRememberedAccess() {
+      try { localStorage.removeItem(REMEMBER_KEY); } catch (_error) {}
+    }
+
+    function hasRememberedAccess() {
+      try {
+        var saved = JSON.parse(localStorage.getItem(REMEMBER_KEY) || "null");
+        if (saved && typeof saved.key === "string" &&
+            Number.isFinite(saved.expires) && saved.expires > Date.now()) {
+          return true;
+        }
+      } catch (_error) {}
+      forgetRememberedAccess();
+      return false;
+    }
+
+    if (params.get("forget") === "1") {
+      forgetRememberedAccess();
+    } else if (params.get("error") !== "1" && hasRememberedAccess()) {
+      location.replace("verify.html?remembered=1&t=" + Date.now());
+    }
+
+    if (params.get("error") === "1") {
       document.getElementById('errorMsg').classList.add('show');
     }
     document.getElementById('pinForm').addEventListener('submit', function () {
