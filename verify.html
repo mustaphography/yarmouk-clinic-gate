@@ -98,12 +98,15 @@
     var params = new URLSearchParams(location.search);
     var config = await loadConfig(params.get("t"));
 
-    // After PIN (or remembered device), land on choose.html so QR users still get
-    // question suggestions. ChatGPT mobile hides GPT conversation-starter chips
-    // when opened via deep link — the gate owns that UI instead.
+    // Straight to the assistant the moment the PIN is accepted — no intermediate
+    // page. choose.html used to sit here to offer question chips, because
+    // ChatGPT mobile hides the GPT's own conversation starters on a deep link.
+    // That trade was made the other way on 2026-08-02: one less tap in an
+    // emergency beats the suggestions. choose.html is left in the repo but is no
+    // longer reachable from this flow; the GPT's Start menu carries the options.
     if (params.get("remembered") === "1") {
       if (rememberedAccessMatches(config)) {
-        location.replace("choose.html?t=" + Date.now());
+        location.replace(config.gpt_url);
       } else {
         forgetRememberedAccess();
         location.replace("index.html?reauth=1");
@@ -113,7 +116,7 @@
 
     if (params.get("pin") === config.pin) {
       if (params.get("remember") === "1") rememberAccess(config);
-      location.replace("choose.html?t=" + Date.now());
+      location.replace(config.gpt_url);
     } else {
       location.replace("index.html?error=1");
     }
