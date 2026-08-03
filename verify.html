@@ -68,6 +68,29 @@
     return (hash >>> 0).toString(16);
   }
 
+  // Hand the assistant an opening prompt so the staff member does not have to
+  // think of one. Measured 2026-08-02 on mobile web: ?prompt= lands the text in
+  // the composer (?q= and ?hint= are ignored; none of them break the link).
+  // It is NOT auto-sent, so this is one tap to the incident menu.
+  //
+  // Why bother: the ChatGPT app does not reliably show a GPT's conversation
+  // starters when it is opened from a deep link, and that is untestable from
+  // the build machine. This does not depend on the app rendering anything.
+  // Worst case the parameter is ignored and staff land exactly where they do
+  // today, so it cannot make things worse.
+  var START_PROMPT = "Start";
+
+  function withPrompt(gptUrl, text) {
+    if (!text) return gptUrl;
+    try {
+      var url = new URL(gptUrl);
+      url.searchParams.set("prompt", text);
+      return url.toString();
+    } catch (_error) {
+      return gptUrl;
+    }
+  }
+
   function forgetRememberedAccess() {
     try { localStorage.removeItem(REMEMBER_KEY); } catch (_error) {}
   }
@@ -106,7 +129,7 @@
     // longer reachable from this flow; the GPT's Start menu carries the options.
     if (params.get("remembered") === "1") {
       if (rememberedAccessMatches(config)) {
-        location.replace(config.gpt_url);
+        location.replace(withPrompt(config.gpt_url, START_PROMPT));
       } else {
         forgetRememberedAccess();
         location.replace("index.html?reauth=1");
@@ -116,7 +139,7 @@
 
     if (params.get("pin") === config.pin) {
       if (params.get("remember") === "1") rememberAccess(config);
-      location.replace(config.gpt_url);
+      location.replace(withPrompt(config.gpt_url, START_PROMPT));
     } else {
       location.replace("index.html?error=1");
     }
