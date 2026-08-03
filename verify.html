@@ -10,8 +10,40 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Verifying…</title>
+<style>
+  :root { color-scheme: light; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center;
+    justify-content: center; padding: 24px; background: #f4f4f6;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  .card {
+    background: #fff; border-radius: 16px; box-shadow: 0 6px 24px rgba(0,0,0,.08);
+    padding: 32px 24px; max-width: 360px; width: 100%; text-align: center;
+  }
+  .emoji { font-size: 44px; margin-bottom: 8px; }
+  h1 { font-size: 18px; margin: 0 0 6px; line-height: 1.3; }
+  h1.ar { direction: rtl; margin: 0 0 18px; }
+  /* A REAL anchor. Not a button, not a JS navigation — see the note in the
+     script below; that distinction is the whole reason this page exists. */
+  a.go {
+    display: block; padding: 17px 16px; border-radius: 12px; background: #c0392b;
+    color: #fff; font-size: 17px; font-weight: 700; text-decoration: none;
+  }
+  a.go:active { background: #a93226; }
+  .ar-sub { display: block; font-size: 14px; font-weight: 500; opacity: .95; margin-top: 3px; direction: rtl; }
+  .hint { margin-top: 16px; font-size: 12px; color: #888; line-height: 1.5; }
+  #launch[hidden] { display: none; }
+</style>
 </head>
 <body>
+<div class="card" id="launch" hidden>
+  <div class="emoji">🚨</div>
+  <h1>Open the Emergency Assistant</h1>
+  <h1 class="ar" lang="ar">افتح مساعد الطوارئ</h1>
+  <a class="go" id="gpt" href="#">Open<span class="ar-sub" lang="ar">فتح</span></a>
+  <p class="hint">Opens in the ChatGPT app<br><span lang="ar" dir="rtl">يفتح في تطبيق ChatGPT</span></p>
+</div>
 <script>
   // Emergency fallback: config.json is deliberately optional at runtime.
   // If it is missing, malformed, unavailable, or unsafe, staff still reach the last
@@ -98,18 +130,27 @@
     var params = new URLSearchParams(location.search);
     var config = await loadConfig(params.get("t"));
 
-    // Via choose.html, which shows the question chips.
+    // Show a real <a> for the staff member to tap. Do NOT redirect here.
     //
-    // This was briefly changed to go straight to the assistant, to save a tap.
-    // It was changed back the same day: on a real phone staff landed in a blank
-    // chat with no prompts at all. The ChatGPT app does not reliably render a
-    // GPT's conversation starters — an OpenAI-side bug, open since Dec 2023,
-    // with no setting that fixes it, and ?q=/?prompt= do not fire in the app
-    // either. Nothing we configure on the GPT can guarantee a prompt appears.
-    // choose.html can, because we render it. The tap buys that guarantee.
+    // This is the whole bug: iOS Universal Links are only honoured for a
+    // user-initiated tap on an anchor. Apple deliberately ignores JavaScript
+    // navigations (location.replace / location.href), because otherwise any
+    // page could throw you into an app. So the old redirect never handed off to
+    // the ChatGPT APP at all — it opened chatgpt.com as a web page in Safari,
+    // where the GPT intro is degraded and the conversation starters collapse.
+    // Opening the identical URL by tapping it works, which is exactly what
+    // staff reported: fine when opened directly, blank via the QR + PIN.
+    //
+    // One tap, and the app opens on the GPT intro screen with its own starters.
+    function showLaunch(gptUrl) {
+      var link = document.getElementById("gpt");
+      link.setAttribute("href", gptUrl);
+      document.getElementById("launch").hidden = false;
+    }
+
     if (params.get("remembered") === "1") {
       if (rememberedAccessMatches(config)) {
-        location.replace("choose.html?t=" + Date.now());
+        showLaunch(config.gpt_url);
       } else {
         forgetRememberedAccess();
         location.replace("index.html?reauth=1");
@@ -119,7 +160,7 @@
 
     if (params.get("pin") === config.pin) {
       if (params.get("remember") === "1") rememberAccess(config);
-      location.replace("choose.html?t=" + Date.now());
+      showLaunch(config.gpt_url);
     } else {
       location.replace("index.html?error=1");
     }
