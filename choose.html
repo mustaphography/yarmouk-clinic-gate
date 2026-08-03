@@ -110,11 +110,17 @@
       pin: "2026",
       gpt_url: "https://chatgpt.com/g/g-6a5f365ddf208191a80168ca39636c9c"
     });
+    // These exist because the ChatGPT app does not reliably render a GPT's own
+    // conversation starters — an OpenAI-side bug reported since Dec 2023 and
+    // still recurring, with no setting that fixes it. Staff opening the QR were
+    // landing on a blank chat with no idea what to type. This page is ours, so
+    // these always render.
     var SUGGESTIONS = [
       { en: "🚨 Emergency | طوارئ", paste: "Emergency", primary: true },
-      { en: "Report an incident", paste: "Report an incident", primary: false },
-      { en: "Find nearest exit", paste: "Find nearest exit", primary: false },
-      { en: "ابدأ | Start", paste: "Start", primary: false }
+      { en: "ابدأ | Start", paste: "Start", primary: false },
+      { en: "Report an incident | الإبلاغ عن حادث", paste: "Report an incident", primary: false },
+      { en: "☢️ Radiological | إشعاعي أو نووي", paste: "Radiological or nuclear incident", primary: false },
+      { en: "Find nearest exit | أقرب مخرج", paste: "Find nearest exit", primary: false }
     ];
 
     function validConfig(value) {
@@ -147,7 +153,16 @@
       var go = function () {
         // ChatGPT deep links do not reliably accept a prefilled message on mobile.
         // Clipboard + open is the workable QR path; staff paste once in chat.
-        location.replace(gptUrl);
+        // ?prompt= prefills the composer on mobile web (measured); the app
+        // ignores it, which is why the clipboard copy above is the real
+        // mechanism. Harmless either way.
+        try {
+          var u = new URL(gptUrl);
+          if (pasteText) u.searchParams.set("prompt", pasteText);
+          location.replace(u.toString());
+        } catch (_e) {
+          location.replace(gptUrl);
+        }
       };
       if (!pasteText) {
         go();
