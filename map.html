@@ -84,6 +84,7 @@
 </div>
 <script>
   var FALLBACK_GPT = "https://chatgpt.com/g/g-6a5f365ddf208191a80168ca39636c9c";
+  var SECURE_MAP_BASE = "https://ymk-maps.map-host.workers.dev/m/q4znee9mnjay/";
   var rooms = [];
 
   function validConfig(v) {
@@ -96,7 +97,17 @@
   }
 
   function show(room) {
-    document.getElementById("mapimg").src = "m/" + room.f;
+    var image = document.getElementById("mapimg");
+    image.dataset.fallback = "";
+    image.onerror = function () {
+      // Emergency failover only. The normal path is the tokenized Cloudflare
+      // Worker; the local copy remains available if that service is unreachable.
+      if (!image.dataset.fallback) {
+        image.dataset.fallback = "1";
+        image.src = "m/" + room.f;
+      }
+    };
+    image.src = SECURE_MAP_BASE + encodeURIComponent(room.f);
     document.getElementById("rname").innerHTML =
       room.en + ' <span lang="ar">' + room.ar + "</span>";
     document.getElementById("picker").className = "off";

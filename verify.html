@@ -32,7 +32,24 @@
   }
   a.go:active { background: #a93226; }
   .ar-sub { display: block; font-size: 14px; font-weight: 500; opacity: .95; margin-top: 3px; direction: rtl; }
-  .hint { margin-top: 16px; font-size: 12px; color: #888; line-height: 1.5; }
+  .intro { margin: 0 0 12px; font-size: 13px; color: #666; line-height: 1.5; }
+  .intro span { display: block; direction: rtl; }
+  .chips { display: grid; gap: 9px; margin-bottom: 16px; }
+  /* Each starter remains a real anchor so its tap can hand off to the ChatGPT
+     app. The click handler only copies the prompt; it never cancels navigation. */
+  a.chip {
+    display: block; padding: 12px 14px; border: 1.5px solid #e5e5ea;
+    border-radius: 11px; background: #fff; color: #1c1c1e;
+    font-size: 15px; font-weight: 650; text-decoration: none;
+    text-align: left; line-height: 1.25;
+  }
+  a.chip:active { background: #f2f2f5; }
+  a.chip .ar-sub { color: #555; }
+  .hint { margin: 12px 0 0; font-size: 12px; color: #777; line-height: 1.5; }
+  #copyField {
+    position: fixed; left: -9999px; top: 0; width: 1px; height: 1px;
+    opacity: 0; pointer-events: none;
+  }
   a.map {
     display: block; margin-top: 14px; padding: 13px 14px; border-radius: 11px;
     border: 1.5px solid #e5e5ea; background: #fff; color: #1c1c1e;
@@ -45,13 +62,17 @@
 <body>
 <div class="card" id="launch" hidden>
   <div class="emoji">🚨</div>
-  <h1>Open the Emergency Assistant</h1>
-  <h1 class="ar" lang="ar">افتح مساعد الطوارئ</h1>
-  <!-- Real <a> only — iOS Universal Links ignore JS redirects. -->
-  <a class="go" id="gpt" href="#">Open assistant<span class="ar-sub" lang="ar">فتح المساعد</span></a>
-  <p class="hint" id="status">Tap once — opens the ChatGPT app with its starters<br><span lang="ar" dir="rtl">اضغط مرة — يفتح تطبيق ChatGPT مع اقتراحاته</span></p>
-  <!-- Backup if the chat picture stays blank on iOS. -->
-  <a class="map" href="map.html">🗺️ Floor map (if chat has no picture)<span class="ar-sub" lang="ar">خريطة الطابق (إذا لم تظهر الصورة)</span></a>
+  <h1>Choose how to start</h1>
+  <h1 class="ar" lang="ar">اختر طريقة البدء</h1>
+  <p class="intro">Tap a starter. It copies the request and opens ChatGPT; paste once in the chat.
+    <span lang="ar">اضغط على خيار. سيتم نسخه وفتح ChatGPT؛ الصقه مرة واحدة في المحادثة.</span>
+  </p>
+  <div class="chips" id="chips" aria-label="Conversation starters"></div>
+  <!-- A real <a> is required for the iOS Universal Link handoff. -->
+  <a class="go" id="gpt" href="#">Open without a starter<span class="ar-sub" lang="ar">فتح بدون خيار</span></a>
+  <p class="hint" id="status" aria-live="polite">The starter remains available even when the iOS app hides its native chips.<br><span lang="ar" dir="rtl">يبقى الخيار متاحًا حتى إذا أخفى تطبيق iOS اقتراحاته.</span></p>
+  <a class="map" href="map.html">🗺️ Open a secure floor map<span class="ar-sub" lang="ar">فتح خريطة طابق آمنة</span></a>
+  <textarea id="copyField" tabindex="-1" aria-hidden="true"></textarea>
 </div>
 <script>
   // Emergency fallback: config.json is deliberately optional at runtime.
@@ -139,15 +160,57 @@
     var params = new URLSearchParams(location.search);
     var config = await loadConfig(params.get("t"));
 
-    // Show a real <a> for the staff member to tap. Do NOT redirect here.
-    //
-    // iOS Universal Links are only honoured for a user-initiated tap on an
-    // anchor. JS navigations (location.replace / location.href) open Safari
-    // web instead, where the GPT intro/starters collapse. Gate chips were
-    // removed — staff should get the GPT's own conversation starters after a
-    // proper app handoff.
+    // Native GPT starter chips are not dependable in the iOS app. These are
+    // rendered by the gate, so the QR/PIN route can never land on a blank
+    // choice screen. Each chip is still a real <a>: iOS Universal Links require
+    // a user-initiated anchor tap to open the ChatGPT app.
+    var SUGGESTIONS = [
+      { en: "Emergency", ar: "طوارئ", prompt: "Emergency" },
+      { en: "Fire", ar: "حريق", prompt: "Fire" },
+      { en: "Medical emergency", ar: "حالة طبية طارئة", prompt: "Medical emergency" },
+      { en: "Evacuation needed", ar: "إخلاء", prompt: "Evacuation needed" },
+      { en: "Radiological / nuclear", ar: "إشعاعي أو نووي", prompt: "Radiological or nuclear incident" },
+      { en: "Find nearest exit", ar: "ابحث عن أقرب مخرج", prompt: "Find nearest exit" }
+    ];
+
+    function copyPrompt(prompt) {
+      var copied = false;
+
+      // Synchronous copy survives immediate Universal Link navigation on iOS.
+      try {
+        var field = document.getElementById("copyField");
+        field.value = prompt;
+        field.focus({ preventScroll: true });
+        field.select();
+        copied = document.execCommand("copy");
+      } catch (_error) {}
+
+      // Modern clipboard API is a second path; never delay or cancel app open.
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(prompt).catch(function () {});
+        }
+      } catch (_error) {}
+
+      document.getElementById("status").textContent = copied
+        ? "Copied — paste once in ChatGPT | تم النسخ — الصقه مرة واحدة في ChatGPT"
+        : "In ChatGPT, type: " + prompt + " | اكتب في ChatGPT: " + prompt;
+    }
+
     function showLaunch(gptUrl) {
       document.getElementById("gpt").setAttribute("href", gptUrl);
+
+      var chips = document.getElementById("chips");
+      chips.innerHTML = "";
+      SUGGESTIONS.forEach(function (item) {
+        var link = document.createElement("a");
+        link.className = "chip";
+        link.setAttribute("href", gptUrl);
+        link.innerHTML = item.en + '<span class="ar-sub" lang="ar">' + item.ar + "</span>";
+        link.addEventListener("click", function () { copyPrompt(item.prompt); });
+        chips.appendChild(link);
+      });
+
       document.getElementById("launch").hidden = false;
     }
 
